@@ -3,21 +3,22 @@ import type { CDPSession } from "puppeteer-core";
 import { mkResponseXHRInterceptor, normalizeHeaders } from "../cdp";
 import { Store } from "../store";
 
-export async function gatherFlow(session: CDPSession, patterns: string[], store: Store): Promise<void> {
+export async function writeMode(session: CDPSession, patterns: string[], store: Store): Promise<void> {
     const responseInterceptor = mkResponseXHRInterceptor(session, patterns);
 
-    responseInterceptor.listen(async ({ requestId, request, responseHeaders }, api) => {
+    responseInterceptor.listen(async ({ requestId, request, responseHeaders, responseStatusCode }, api) => {
         const rawBody = await api.getRealResponse(requestId);
+        const responseCode = responseStatusCode!;
         const headers = normalizeHeaders(responseHeaders);
         const body = rawBody.toString("binary");
 
-        await store.resolve();
-        store.set(request.url, { body, headers });
+        await store.set(request.url, { responseCode, headers, body });
 
         await api.respondWithMock({
             requestId,
-            body,
+            responseCode,
             headers,
+            body,
         });
     });
 

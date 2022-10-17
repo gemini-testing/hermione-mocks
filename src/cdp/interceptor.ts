@@ -42,9 +42,9 @@ export class CdpInterceptor {
 
     protected get api(): ApiType {
         return {
-            respondWithMock: this.respondWithMock.bind(this),
-            getRealResponse: this.getRealResponse.bind(this),
-            continueRequest: this.continueRequest.bind(this),
+            respondWithMock: (params: RespondWithMockParams) => this.respondWithMock(params),
+            getRealResponse: (requestId: string) => this.getRealResponse(requestId),
+            continueRequest: (requestId: string) => this.continueRequest(requestId),
         };
     }
 

@@ -9,13 +9,14 @@ export type DumpsDirCallback = (test: Hermione.Test) => string;
 export interface DumpResponse {
     body: string;
     headers: Record<string, string>;
+    responseCode: number;
 }
 
 export interface Dump {
-    responses: {
+    requests: {
         [hashKey: string]: string[];
     };
-    storage: {
+    responses: {
         [responseId: string]: DumpResponse;
     };
 }

@@ -4,6 +4,7 @@ export type FetchEvent = {
     requestId: string;
     request: Protocol.Network.Request;
     responseHeaders?: Array<Protocol.Fetch.HeaderEntry>;
+    responseStatusCode?: number;
 };
 
 export type Headers = Record<string, string>;

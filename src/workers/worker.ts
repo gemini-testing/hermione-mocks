@@ -12,9 +12,7 @@ export interface WorkersRunner {
 }
 
 export const readDump: readDump = async fileName => {
-    return fs.promises
-        .readFile(fileName, { encoding: "utf8" })
-        .then(JSON.parse);
+    return fs.promises.readFile(fileName, { encoding: "utf8" }).then(JSON.parse);
 };
 
 /**
@@ -38,9 +36,9 @@ export const writeDump: writeDump = async (fileName, dump, overwrite) => {
     }
 
     if (isDir === false && !overwrite) {
-        return
+        return;
     }
 
-    await fs.promises.mkdir(path.dirname(fileName), { recursive: true })
+    await fs.promises.mkdir(path.dirname(fileName), { recursive: true });
     return fs.promises.writeFile(fileName, JSON.stringify(dump, null, 2));
 };

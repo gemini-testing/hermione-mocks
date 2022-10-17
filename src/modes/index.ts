@@ -1,6 +1,8 @@
-import { RunMode } from "./types";
+export { writeMode } from "./writeMode";
+export { readMode } from "./readMode";
+import { RunMode } from "../types";
 
-export async function declareModeFlows(
+export async function useModes(
     {
         onPlay,
         onCreate,
