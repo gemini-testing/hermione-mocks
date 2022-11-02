@@ -3,20 +3,21 @@ import PQueue from "p-queue";
 import os from "os";
 
 import { createWorkersRunner } from "./workers";
-import { WorkersRunner } from "./workers/worker";
 import { Store } from "./store";
-import { DumpsPluginConfig, parseConfig } from "./config";
+import { parseConfig } from "./config";
 import { useModes, readMode, writeMode } from "./modes";
+import type { PluginConfig } from "./config";
+import type { WorkersRunner } from "./workers/worker";
 
-export = (hermione: Hermione, opts: DumpsPluginConfig): void => {
+export = (hermione: Hermione, opts: PluginConfig): void => {
     const config = parseConfig(opts, hermione.config);
+
     if (!config.enabled || hermione.isWorker()) {
         return;
     }
 
     let workersRunner: WorkersRunner;
     const stores = new Map<string, Store>();
-    const sessionEndedIds = new Set<string>();
     const queue = new PQueue({ concurrency: os.cpus().length });
 
     const attachTarget = async (page: Page, sessionId: string): Promise<void> => {
@@ -31,12 +32,14 @@ export = (hermione: Hermione, opts: DumpsPluginConfig): void => {
         }
 
         const session = await target.createCDPSession();
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const getStore: () => Store = () => stores.get(sessionId)!;
 
         await useModes(
             {
-                onPlay: () => readMode(session, config.hostsPatterns, stores.get(sessionId)!),
-                onCreate: () => writeMode(session, config.hostsPatterns, stores.get(sessionId)!),
-                onSave: () => writeMode(session, config.hostsPatterns, stores.get(sessionId)!),
+                onPlay: () => readMode(session, config.hostsPatterns, getStore),
+                onCreate: () => writeMode(session, config.hostsPatterns, getStore),
+                onSave: () => writeMode(session, config.hostsPatterns, getStore),
             },
             config.mode,
         );
@@ -46,15 +49,13 @@ export = (hermione: Hermione, opts: DumpsPluginConfig): void => {
         workersRunner = createWorkersRunner(runner);
     });
 
-    hermione.on(hermione.events.SESSION_START, async (browser, info) => {
-        if (!config.browsers.includes(info.browserId)) {
+    hermione.on(hermione.events.SESSION_START, async (browser, { browserId, sessionId }) => {
+        if (!config.browsers.includes(browserId)) {
             return;
         }
 
         const puppeteer = await browser.getPuppeteer();
         const pages = await puppeteer.pages();
-
-        stores.set(info.sessionId, Store.create(config.dumpsDir, workersRunner));
 
         await Promise.all(
             pages.map(async (page: unknown) => {
@@ -62,7 +63,7 @@ export = (hermione: Hermione, opts: DumpsPluginConfig): void => {
                     return;
                 }
 
-                await attachTarget(page as Page, info.sessionId);
+                await attachTarget(page as Page, sessionId);
             }),
         );
 
@@ -73,7 +74,7 @@ export = (hermione: Hermione, opts: DumpsPluginConfig): void => {
                 return;
             }
 
-            await attachTarget(page, info.sessionId);
+            await attachTarget(page, sessionId);
         });
     });
 
@@ -82,62 +83,34 @@ export = (hermione: Hermione, opts: DumpsPluginConfig): void => {
             return;
         }
 
-        useModes(
-            {
-                onPlay: () => stores.get(test.sessionId)!.loadDump(test),
-                onSave: () => stores.get(test.sessionId)!.createEmptyDump(),
-                onCreate: () => stores.get(test.sessionId)!.createEmptyDump(),
-            },
-            config.mode,
-        );
+        const newStore = Store.create(config.dumpsDir, workersRunner, test);
+
+        stores.set(test.sessionId, newStore);
     });
 
-    const cleanStaleStores = (): void => sessionEndedIds.forEach(id => sessionEndedIds.delete(id) && stores.delete(id) && console.log(`deleted ${id}`));
-
-    hermione.on(hermione.events.TEST_PASS, test => {
-        if (!config.browsers.includes(test.browserId)) {
-            return;
-        }
-
-        const onWrite = (test: Hermione.Test, opts: { overwrite: boolean }): void => {
-            queue.add(() => stores.get(test.sessionId)!.saveDump(test, opts).then(cleanStaleStores));
-        };
-
-        useModes(
-            {
-                onCreate: () => onWrite(test, { overwrite: false }),
-                onSave: () => onWrite(test, { overwrite: true }),
-            },
-            config.mode,
-        );
-    });
-
-    hermione.on(hermione.events.TEST_FAIL, test => {
-        if (!config.browsers.includes(test.browserId)) {
+    hermione.on(hermione.events.TEST_PASS, ({ browserId, sessionId }) => {
+        if (!config.browsers.includes(browserId)) {
             return;
         }
 
         useModes(
             {
-                onCreate: cleanStaleStores,
-                onSave: cleanStaleStores,
+                onPlay: () => stores.delete(sessionId),
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                onCreate: () => queue.add(() => stores.get(sessionId)!.saveDump({ overwrite: false })),
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                onSave: () => queue.add(() => stores.get(sessionId)!.saveDump({ overwrite: true })),
             },
             config.mode,
         );
     });
 
-    hermione.on(hermione.events.SESSION_END, (_, { sessionId }) => {
-        const onWrite = (sessionId: string): void => {
-            sessionEndedIds.add(sessionId);
-        };
+    hermione.on(hermione.events.TEST_FAIL, ({ browserId, sessionId }) => {
+        if (!config.browsers.includes(browserId)) {
+            return;
+        }
 
-        useModes(
-            {
-                onCreate: () => onWrite(sessionId),
-                onSave: () => onWrite(sessionId),
-            },
-            config.mode,
-        );
+        stores.delete(sessionId);
     });
 
     hermione.on(hermione.events.RUNNER_END, () => queue.onIdle());

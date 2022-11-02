@@ -1,8 +1,8 @@
 import btoa from "btoa";
 import type { CDPSession, Protocol } from "puppeteer-core";
 
-import { FetchEvent, FetchInterceptionStage, Headers } from "./types";
-
+import type { FetchEvent, Headers } from "./types";
+import { FetchInterceptionStage } from "./types";
 import { createResponseHeaders } from ".";
 
 type RespondWithMockParams = {

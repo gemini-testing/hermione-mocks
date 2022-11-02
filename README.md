@@ -16,7 +16,7 @@ npm install hermione-mocks --save-dev
 * **mode** (optional) `"play" | "save" | "create"` - plugin's mode. Default - `"save"`
    - `"play"`: Reads dumps from fs (dumps should exist) 
    - `"save"`: Writes dumps to fs. **Overwrites** existing dumps
-   - `"create"`: Writes dumps to fs. **Doesn't overwrite**, existing dumps
+   - `"create"`: Writes dumps to fs. **Doesn't overwrite** existing dumps
 * **dumpsDir** (optional) `string | (test: Hermione.Test) => string` -  dumps' directory. Default - `"hermione-dumps"`
    - `string`: (ex: `"hermione-dumps"`). All your dumps will be located in `hermione-dumps` in the root of the project.
    - `(test: Hermione.Test) => string`: (ex: `path.join(path.dirname(test.file), "hermione-dumps")`. `hermione-dumps` directories will be located next to each hermione test). Saves tests' dumps to directories by path, returned by the function

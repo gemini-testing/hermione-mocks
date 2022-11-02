@@ -1,6 +1,8 @@
 import type { CDPSession, Protocol } from "puppeteer-core";
+
 import { CdpInterceptor } from "./interceptor";
-import { FetchInterceptionStage, FetchResourceType, Headers } from "./types";
+import { FetchResourceType, FetchInterceptionStage } from "./types";
+import type { Headers } from "./types";
 
 export const mkRequestXHRInterceptor = (session: CDPSession, patterns: string[]): CdpInterceptor =>
     new CdpInterceptor(session, FetchResourceType.XHR, FetchInterceptionStage.Request, patterns);

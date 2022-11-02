@@ -32,7 +32,6 @@ module.exports = {
                 }
             }
         ],
-        "@typescript-eslint/no-non-null-assertion": "off",
         "object-curly-spacing": ["error", "always"],
         quotes: ["error", "double", { avoidEscape: true }],
         "comma-dangle": ["error", "always-multiline"],

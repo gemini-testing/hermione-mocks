@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-import { Dump } from "../types";
+import type { Dump } from "../types";
 
 type readDump = (fileName: string) => Promise<Dump>;
 type writeDump = (fileName: string, dump: Dump, overwrite: boolean) => Promise<void>;
@@ -15,27 +15,23 @@ export const readDump: readDump = async fileName => {
     return fs.promises.readFile(fileName, { encoding: "utf8" }).then(JSON.parse);
 };
 
-/**
- * @returns null, if doesn't exist. Boolean otherwise
- */
-const isDirectory = async (path: string): Promise<boolean | null> => {
-    const stat = await new Promise<fs.Stats | null>(resolve => {
+const checkPathContent = async (path: string): Promise<"empty" | "file" | "directory"> => {
+    return new Promise<"empty" | "file" | "directory">(resolve => {
         fs.promises
-            .lstat(path)
-            .then(resolve)
-            .catch(() => resolve(null));
+            .stat(path)
+            .then(stat => resolve(stat.isDirectory() ? "directory" : "file"))
+            .catch(() => resolve("empty"));
     });
-    return stat && stat.isDirectory();
 };
 
 export const writeDump: writeDump = async (fileName, dump, overwrite) => {
-    const isDir = await isDirectory(fileName);
+    const pathContent = await checkPathContent(fileName);
 
-    if (isDir) {
+    if (pathContent === "directory") {
         throw Error(`${fileName} is directory. Please remove or rename it`);
     }
 
-    if (isDir === false && !overwrite) {
+    if (pathContent === "file" && !overwrite) {
         return;
     }
 

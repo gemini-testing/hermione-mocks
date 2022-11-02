@@ -1,5 +1,6 @@
 import { option, Parser } from "gemini-configparser";
 import _ from "lodash";
+
 import { RunMode } from "../types";
 
 const isStringOrFunction = (val: unknown): boolean => _.isString(val) || _.isFunction(val);
@@ -9,15 +10,17 @@ const isStringArray = (val: unknown): boolean => _.isArray(val) && val.every(_.i
 const assertType = <T>(name: string, validationFn: (v: unknown) => boolean, type: string) => {
     return (v: T) => {
         if (!validationFn(v)) {
-            throw new TypeError(`${name} must be a ${type}, but got ${typeof v}`);
+            const article = type.startsWith("a") ? "an" : "a";
+
+            throw new TypeError(`${name} must be ${article} ${type}, but got ${typeof v}`);
         }
     };
 };
 
 export const booleanOption = (name: string, defaultValue: boolean): Parser<boolean> =>
     option<boolean>({
-        parseEnv: (val: string) => Boolean(JSON.parse(val)),
-        parseCli: (val: string) => Boolean(JSON.parse(val)),
+        parseEnv: JSON.parse,
+        parseCli: JSON.parse,
         defaultValue,
         validate: assertType<boolean>(name, _.isBoolean, "boolean"),
     });
@@ -27,21 +30,20 @@ export const stringOrFunctionOption = (name: string, defaultValue: string | Func
         parseEnv: JSON.parse,
         parseCli: JSON.parse,
         defaultValue,
-        validate: assertType<string | Function>(name, isStringOrFunction, "string | (test: Hermione.Test) => string"),
+        validate: assertType<string | Function>(name, isStringOrFunction, "string or Function"),
     });
+
+const validateRunMode = (name: string): ((v: string) => void) => {
+    const validTypes = Object.values(RunMode)
+        .map(val => `"${val}"`)
+        .join(" or ");
+    return assertType<string>(name, isRunModeOption, validTypes);
+};
 
 export const runModeOption = (name: string, defaultValue?: RunMode): Parser<RunMode> =>
     option<RunMode>({
-        parseEnv: JSON.parse,
-        parseCli: JSON.parse,
         defaultValue,
-        validate: assertType<string>(
-            name,
-            isRunModeOption,
-            Object.values(RunMode)
-                .map(val => `"${val}"`)
-                .join(" or "),
-        ),
+        validate: validateRunMode(name),
     });
 
 export function arrayStringOption(name: string, defaultValue: string[]): Parser<string[]> {
@@ -49,6 +51,6 @@ export function arrayStringOption(name: string, defaultValue: string[]): Parser<
         parseEnv: JSON.parse,
         parseCli: JSON.parse,
         defaultValue,
-        validate: assertType<string[]>(name, isStringArray, "string[]"),
+        validate: assertType<string[]>(name, isStringArray, "array of strings"),
     });
 }

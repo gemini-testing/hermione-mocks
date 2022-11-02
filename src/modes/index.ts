@@ -1,3 +1,4 @@
+/* eslint @typescript-eslint/no-explicit-any: 0 */
 export { writeMode } from "./writeMode";
 export { readMode } from "./readMode";
 import { RunMode } from "../types";
@@ -8,9 +9,9 @@ export async function useModes(
         onCreate,
         onSave,
     }: {
-        onPlay?: () => Promise<void> | void;
-        onCreate?: () => Promise<void> | void;
-        onSave?: () => Promise<void> | void;
+        onPlay?: () => Promise<any> | any;
+        onCreate?: () => Promise<any> | any;
+        onSave?: () => Promise<any> | any;
     },
     mode: RunMode,
 ): Promise<void> {
